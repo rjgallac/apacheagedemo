@@ -3,9 +3,14 @@ package uk.cosheffieldwebdeveloper.apacheagedemo.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.apache.age.jdbc.*;
+import org.apache.age.jdbc.base.Agtype;
+import org.postgresql.PGConnection;
 import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 
 @RestController
@@ -20,26 +25,69 @@ public class TestController {
     @Value("${spring.datasource.password}")
     private String dbPassword;
 
+    // @Autowired
+    // private DataSource dataSource;
+
+    @GetMapping("/create-node")
+    public String createNode(
+            @RequestParam String label,
+            @RequestParam String propertyName,
+            @RequestParam String propertyValue) {
+
+
+         try (Connection conn = DriverManager.getConnection(dbUrl, dbUsername, dbPassword)) {
+            PGConnection pgConn = (PGConnection) conn;
+            if (pgConn != null) {
+                pgConn.addDataType("agtype", Agtype.class);
+
+                try (Statement stmt = conn.createStatement()) {
+                    String cypher = "SELECT * FROM cypher('demo_graph', $$ " +
+                            "CREATE (:" + label + " {" + propertyName + ": '" + propertyValue + "'}) $$) as (v agtype);";
+
+                    ResultSet rs = stmt.executeQuery(cypher);
+                    rs.close();
+
+                    return "Node created successfully: " + label + " with " + propertyName + " = " + propertyValue;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }        
+        return "Error creating node";
+    }
+
+    @GetMapping("/create-edge")
+    public String createEdge(
+            @RequestParam String relType,
+            @RequestParam String label,
+            @RequestParam String prop1,
+            @RequestParam String value1,
+            @RequestParam String prop2,
+            @RequestParam String value2) {
+         try (Connection conn = DriverManager.getConnection(dbUrl, dbUsername, dbPassword)) {
+            PGConnection pgConn = (PGConnection) conn;
+            pgConn.addDataType("agtype", Agtype.class);
+
+            try (Statement stmt = conn.createStatement()) {
+                String cypher = "SELECT * FROM cypher('demo_graph', $$ " +
+                        "MATCH (a:" + label + "), (b:" + label + ") " +
+                        "WHERE a." + prop1 + " = '" + value1 + "' AND b." + prop2 + " = '" + value2 + "' " +
+                        "CREATE (a)-[e:" + relType + " {property:a." + prop1 + " + '<->' + b." + prop2 + "}]->(b) " +
+                        "RETURN e $$) as (e agtype);";
+
+                ResultSet rs = stmt.executeQuery(cypher);
+                rs.close();
+
+                return "Edge created successfully: " + relType + " between " + value1 + " and " + value2;
+            }
+        } catch (Exception e) {
+            return "Error creating edge: " + e.getMessage();
+        }
+    }
 
     @GetMapping("/test")
     public String test() {
-        try {
-            // Create nodes and edges in AGE database
-                Connection connection = java.sql.DriverManager.getConnection(dbUrl, dbUsername, dbPassword);
-                Statement statement = connection.createStatement();
-    
-                // Create nodes
-                statement.executeUpdate("SELECT create_vertex('person', 'name', 'Alice')");
-                statement.executeUpdate("SELECT create_vertex('person', 'name', 'Bob')");
-    
-                // Create edge
-                statement.executeUpdate("SELECT create_edge('knows', 'person', 'person', 'Alice', 'Bob')");
-    
-                connection.close(); 
-            return "Nodes and edges created successfully in AGE database!";
-        } catch (Exception e) {
-            return "Error creating nodes and edges: " + e.getMessage();
-        }
+        return "AGE Database Controller is running!";
     }
 
 }
