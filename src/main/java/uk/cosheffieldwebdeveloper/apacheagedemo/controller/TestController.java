@@ -30,10 +30,7 @@ public class TestController {
     // private DataSource dataSource;
 
     @GetMapping("/create-node")
-    public String createNode(
-            @RequestParam String label,
-            @RequestParam String propertyName,
-            @RequestParam String propertyValue) {
+    public String createNode(@RequestParam String propertyName) {
 
          try (Connection conn = DriverManager.getConnection(dbUrl, dbUsername, dbPassword)) {
             PGConnection pgConn = (PGConnection) conn;
@@ -41,13 +38,25 @@ public class TestController {
                 pgConn.addDataType("agtype", Agtype.class);
 
                 try (Statement stmt = conn.createStatement()) {
-                    String cypher = "SET search_path TO ag_catalog, public;SELECT * FROM cypher('graph_name', $$ " +
-                            "CREATE (:" + label + " {" + propertyName + ": '" + propertyValue + "'}) $$) as (v agtype);";
 
-                    ResultSet rs = stmt.executeQuery(cypher);
-                    rs.close();
 
-                    return "Node created successfully: " + label + " with " + propertyName + " = " + propertyValue;
+                     String cypher1 = """
+                                SET search_path TO ag_catalog, public;
+                               
+                            """;
+
+                    stmt.executeUpdate(cypher1);
+
+                    String cypher2 = """
+                                SELECT * FROM cypher('graph_name', $$ 
+                                    CREATE (a {property:"%s"}) 
+                                    RETURN a
+                                $$) as (a agtype);
+                            """.formatted(propertyName);
+
+                    ResultSet rs2 = stmt.executeQuery(cypher2);
+
+                    return "Node created successfully: " + propertyName;
                 }
             }
         } catch (SQLException e) {
@@ -58,27 +67,23 @@ public class TestController {
 
     @GetMapping("/create-edge")
     public String createEdge(
-            @RequestParam String relType,
-            @RequestParam String label,
             @RequestParam String prop1,
-            @RequestParam String value1,
-            @RequestParam String prop2,
-            @RequestParam String value2) {
+            @RequestParam String prop2) {
          try (Connection conn = DriverManager.getConnection(dbUrl, dbUsername, dbPassword)) {
             PGConnection pgConn = (PGConnection) conn;
             pgConn.addDataType("agtype", Agtype.class);
 
             try (Statement stmt = conn.createStatement()) {
                 String cypher = "SET search_path TO ag_catalog, public;SELECT * FROM cypher('graph_name', $$ " +
-                        "MATCH (a:" + label + "), (b:" + label + ") " +
-                        "WHERE a." + prop1 + " = '" + value1 + "' AND b." + prop2 + " = '" + value2 + "' " +
-                        "CREATE (a)-[e:" + relType + " {property:a." + prop1 + " + '<->' + b." + prop2 + "}]->(b) " +
+                        "MATCH (a: label), (b:label) " +
+                        "WHERE a.property = '" + prop1 + "' AND b.property = '" + prop2 + "' " +
+                        "CREATE (a)-[e:RELTYPE {property:a." + prop1 + " + '<->' + b." + prop2 + "}]->(b) " +
                         "RETURN e $$) as (e agtype);";
 
                 ResultSet rs = stmt.executeQuery(cypher);
                 rs.close();
 
-                return "Edge created successfully: " + relType + " between " + value1 + " and " + value2;
+                return "Edge created successfully: between " + prop1 + " and " + prop2;
             }
         } catch (Exception e) {
             return "Error creating edge: " + e.getMessage();
