@@ -34,6 +34,12 @@ FROM cypher('graph_name', $$
 $$) as (v agtype);
 
 SELECT * 
+FROM cypher('graph_name', $$ 
+    MATCH (n) 
+    RETURN n 
+$$) AS (n agtype);   
+
+SELECT * 
 FROM cypher('graph_name', $$
     MATCH (a:label), (b:label)
     WHERE a.property = 'Node A' AND b.property = 'Node B'

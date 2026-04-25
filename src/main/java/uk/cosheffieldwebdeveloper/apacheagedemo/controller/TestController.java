@@ -2,6 +2,7 @@ package uk.cosheffieldwebdeveloper.apacheagedemo.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,14 +35,13 @@ public class TestController {
             @RequestParam String propertyName,
             @RequestParam String propertyValue) {
 
-
          try (Connection conn = DriverManager.getConnection(dbUrl, dbUsername, dbPassword)) {
             PGConnection pgConn = (PGConnection) conn;
             if (pgConn != null) {
                 pgConn.addDataType("agtype", Agtype.class);
 
                 try (Statement stmt = conn.createStatement()) {
-                    String cypher = "SELECT * FROM cypher('demo_graph', $$ " +
+                    String cypher = "SET search_path TO ag_catalog, public;SELECT * FROM cypher('graph_name', $$ " +
                             "CREATE (:" + label + " {" + propertyName + ": '" + propertyValue + "'}) $$) as (v agtype);";
 
                     ResultSet rs = stmt.executeQuery(cypher);
@@ -52,7 +52,7 @@ public class TestController {
             }
         } catch (SQLException e) {
             e.printStackTrace();
-        }        
+        }
         return "Error creating node";
     }
 
@@ -69,7 +69,7 @@ public class TestController {
             pgConn.addDataType("agtype", Agtype.class);
 
             try (Statement stmt = conn.createStatement()) {
-                String cypher = "SELECT * FROM cypher('demo_graph', $$ " +
+                String cypher = "SET search_path TO ag_catalog, public;SELECT * FROM cypher('graph_name', $$ " +
                         "MATCH (a:" + label + "), (b:" + label + ") " +
                         "WHERE a." + prop1 + " = '" + value1 + "' AND b." + prop2 + " = '" + value2 + "' " +
                         "CREATE (a)-[e:" + relType + " {property:a." + prop1 + " + '<->' + b." + prop2 + "}]->(b) " +
@@ -88,6 +88,52 @@ public class TestController {
     @GetMapping("/test")
     public String test() {
         return "AGE Database Controller is running!";
+    }
+
+    @GetMapping("/setup")
+    public String setup() {
+        try (Connection conn = DriverManager.getConnection(dbUrl, dbUsername, dbPassword)) {
+            PGConnection pgConn = (PGConnection) conn;
+            pgConn.addDataType("agtype", Agtype.class);
+
+            try (Statement stmt = conn.createStatement()) {
+                String createGraph = "SELECT create_graph('demo_graph');";
+                stmt.execute(createGraph);
+
+                String createExtension = "CREATE EXTENSION IF NOT EXISTS age;";
+                stmt.execute(createExtension);
+
+                return "Database setup completed successfully!";
+            }
+        } catch (SQLException e) {
+            return "Error during setup: " + e.getMessage();
+        }
+    }
+    
+    @DeleteMapping("/delete-all")
+    public String deleteAll(){
+
+        //SELECT * FROM cypher('graph_name', $$
+        //   MATCH (n)
+        //   CALL { WITH n DETACH DELETE n } IN TRANSACTIONS OF 10000 ROWS
+        // $$) AS (n agtype);   
+
+        try (Connection conn = DriverManager.getConnection(dbUrl, dbUsername, dbPassword)) {
+            PGConnection pgConn = (PGConnection) conn;
+            pgConn.addDataType("agtype", Agtype.class);
+
+            try (Statement stmt = conn.createStatement()) {
+                String cypher = "SET search_path TO ag_catalog, public;SELECT * FROM cypher('graph_name', $$ MATCH (n)  CALL { WITH n DETACH DELETE n } IN TRANSACTIONS OF 10000 ROWS $$) AS (n agtype); ";
+
+                ResultSet rs = stmt.executeQuery(cypher);
+                rs.close();
+
+                return "deleted";
+            }
+        } catch (Exception e) {
+            return "Error creating edge: " + e.getMessage();
+        }
+
     }
 
 }
