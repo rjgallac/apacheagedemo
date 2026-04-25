@@ -38,23 +38,14 @@ public class TestController {
                 pgConn.addDataType("agtype", Agtype.class);
 
                 try (Statement stmt = conn.createStatement()) {
-
-
-                     String cypher1 = """
-                                SET search_path TO ag_catalog, public;
-                               
-                            """;
-
-                    stmt.executeUpdate(cypher1);
-
-                    String cypher2 = """
+                    String cypher = """
                                 SELECT * FROM cypher('graph_name', $$ 
-                                    CREATE (a {property:"%s"}) 
+                                    CREATE (a:label {property:"%s"}) 
                                     RETURN a
                                 $$) as (a agtype);
                             """.formatted(propertyName);
 
-                    ResultSet rs2 = stmt.executeQuery(cypher2);
+                    ResultSet rs = stmt.executeQuery(cypher);
 
                     return "Node created successfully: " + propertyName;
                 }
@@ -74,11 +65,12 @@ public class TestController {
             pgConn.addDataType("agtype", Agtype.class);
 
             try (Statement stmt = conn.createStatement()) {
-                String cypher = "SET search_path TO ag_catalog, public;SELECT * FROM cypher('graph_name', $$ " +
-                        "MATCH (a: label), (b:label) " +
+                String cypher = "SELECT * FROM cypher('graph_name', $$ " +
+                        "MATCH (a:label), (b:label) " +
                         "WHERE a.property = '" + prop1 + "' AND b.property = '" + prop2 + "' " +
-                        "CREATE (a)-[e:RELTYPE {property:a." + prop1 + " + '<->' + b." + prop2 + "}]->(b) " +
+                        "CREATE (a)-[e:RELTYPE {property:a.property + '<->' + b.property}]->(b) " +
                         "RETURN e $$) as (e agtype);";
+
 
                 ResultSet rs = stmt.executeQuery(cypher);
                 rs.close();

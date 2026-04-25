@@ -83,3 +83,5 @@ SELECT * from cypher('graph_name', $$
         MATCH (V)-[R]-(V2)
         RETURN V,R,V2
 $$) as (V agtype, R agtype, V2 agtype);
+
+SELECT * FROM cypher('graph_name', $$ MATCH (a)-[e]->(b) RETURN a, e, b $$) AS (a agtype, e agtype, b agtype);
