@@ -23,7 +23,7 @@ public class PersonRepository {
         return s == null ? "" : s.replace("'", "''");
     }
 
-    public String createPerson(String propertyName) {
+    public String createPerson(String name) {
         try (Connection conn = dataSource.getConnection()) {
             try {
                 PGConnection pgConn = conn.unwrap(PGConnection.class);
@@ -32,22 +32,22 @@ public class PersonRepository {
             }
 
             try (Statement stmt = conn.createStatement()) {
-                    String safe = escape(propertyName);
+                    String safe = escape(name);
                     String cypher = String.format(
-                            "SELECT * FROM cypher('graph_name', $$ CREATE (a:label {property:\"%s\"}) RETURN a $$) as (a agtype);",
+                            "SELECT * FROM cypher('graph_name', $$ CREATE (a:Person {name:\"%s\"}) RETURN a $$) as (a agtype);",
                             safe);
 
                     ResultSet rs = stmt.executeQuery(cypher);
                     if (rs != null) rs.close();
 
-                    return "Node created successfully: " + propertyName;
+                    return "Node created successfully: " + name;
                 }
         } catch (Exception e) {
             return "Error creating node: " + e.getMessage();
         }
     }
 
-    public String createRelation(String prop1, String prop2) {
+    public String createRelation(String name1, String name2) {
         try (Connection conn = dataSource.getConnection()) {
                 try {
                     PGConnection pgConn = conn.unwrap(PGConnection.class);
@@ -56,18 +56,18 @@ public class PersonRepository {
                 }
 
             try (Statement stmt = conn.createStatement()) {
-                String a = escape(prop1);
-                String b = escape(prop2);
+                String a = escape(name1);
+                String b = escape(name2);
                 String cypher = "SELECT * FROM cypher('graph_name', $$ "
-                        + "MATCH (a:label), (b:label) "
-                        + "WHERE a.property = '" + a + "' AND b.property = '" + b + "' "
-                        + "CREATE (a)-[e:RELTYPE {property:a.property + '<->' + b.property}]->(b) "
+                        + "MATCH (a:Person), (b:Person) "
+                        + "WHERE a.name = '" + a + "' AND b.name = '" + b + "' "
+                        + "CREATE (a)-[e:RELTYPE {property:a.name + '<->' + b.name}]->(b) "
                         + "RETURN e $$) as (e agtype);";
 
                 ResultSet rs = stmt.executeQuery(cypher);
                 if (rs != null) rs.close();
 
-                return "Edge created successfully: between " + prop1 + " and " + prop2;
+                return "Edge created successfully: between " + name1 + " and " + name2;
             }
         } catch (Exception e) {
             return "Error creating edge: " + e.getMessage();

@@ -17,16 +17,16 @@ public class TestController {
     }
    
     @GetMapping("/create-node")
-    public String createNode(@RequestParam String propertyName) {
-        return personRepository.createPerson(propertyName);
+    public String createNode(@RequestParam String name) {
+        return personRepository.createPerson(name);
         
     }
 
     @GetMapping("/create-edge")
     public String createEdge(
-            @RequestParam String prop1,
-            @RequestParam String prop2) {
-        return personRepository.createRelation(prop1, prop2);
+            @RequestParam String name1,
+            @RequestParam String name2) {
+        return personRepository.createRelation(name1, name2);
     }
 
     @GetMapping("/test")
